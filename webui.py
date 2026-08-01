@@ -24,7 +24,7 @@ if sys.platform == "win32":
 # ---------------------------------------------------------------------------
 # Hằng số ngôn ngữ
 # ---------------------------------------------------------------------------
-CLI_LANG = "zh"
+CLI_LANG = "vi"
 os.environ['PYVIDEOTRANS_LANG'] = CLI_LANG
 
 # ---------------------------------------------------------------------------
@@ -910,13 +910,494 @@ def build_advanced_settings():
 
 
 # ---------------------------------------------------------------------------
+# Bảng dịch nhanh Việt -> Anh, dùng cho công tắc ngôn ngữ giao diện (thay thế
+# văn bản trực tiếp trên DOM, không cần build lại giao diện Gradio)
+# ---------------------------------------------------------------------------
+UI_I18N_VI_EN = {
+    # Tiêu đề / thẻ tab
+    "pyVideoTrans Dịch Video WebUI": "AIGenerate Video Translation WebUI",
+    "Giao diện này chỉ triển khai một phần tính năng, để dùng đầy đủ tính năng vui lòng dùng bản desktop (sp.exe hoặc sp.py)": "This interface only implements a subset of features, please use the desktop version (sp.exe or sp.py) for full features",
+    "Tài liệu sử dụng": "Documentation",
+    "Mã nguồn": "Source code",
+    "Gặp sự cố": "Report an issue",
+    "🎬 Dịch video": "🎬 Translate Video",
+    "⚙️ Cài đặt kênh": "⚙️ Channel Settings",
+    "🔧 Tùy chọn nâng cao": "🔧 Advanced Options",
+
+    # Tab dịch video chính
+    "Chọn tệp video": "Select video file",
+    "Kênh nhận dạng": "Recognition channel",
+    "Mô hình": "Model",
+    "Kênh dịch": "Translation channel",
+    "Ngôn ngữ phát âm (ngôn ngữ nguồn)": "Spoken language (source language)",
+    "Ngôn ngữ đích": "Target language",
+    "Kênh lồng tiếng": "Dubbing channel",
+    "Nhân vật lồng tiếng": "Voice role",
+    "Tăng tốc lồng tiếng": "Auto speed up dubbing",
+    "Làm chậm video": "Slow down video",
+    "Tốc độ lồng tiếng (%)": "Dubbing speed (%)",
+    "Điều chỉnh âm lượng (%)": "Volume adjustment (%)",
+    "Cao độ (Hz)": "Pitch (Hz)",
+    "Kiểu nhúng phụ đề": "Subtitle embedding type",
+    "📋 Cài đặt thêm": "📋 Additional settings",
+    "Khử nhiễu": "Noise reduction",
+    "Xử lý dấu câu": "Punctuation handling",
+    "Tách giọng nói và âm thanh nền": "Separate voice and background audio",
+    "Nhúng lại âm thanh nền": "Re-embed background audio",
+    "Xử lý âm thanh nền": "Background audio handling",
+    "Âm lượng nền": "Background volume",
+    "Bật tăng tốc CUDA": "Enable CUDA acceleration",
+    "🚀 Bắt đầu thực hiện": "🚀 Start",
+    "Nhật ký thực thi": "Execution log",
+    "Xem trước video": "Video preview",
+    "Tệp kết quả (nhấn để tải)": "Result files (click to download)",
+
+    # Dropdown lựa chọn tĩnh
+    "Không nhúng phụ đề": "No subtitles",
+    "Nhúng phụ đề cứng": "Hardcode subtitles",
+    "Nhúng phụ đề mềm": "Soft subtitles",
+    "Nhúng phụ đề cứng (song ngữ)": "Hardcode subtitles (bilingual)",
+    "Nhúng phụ đề mềm (song ngữ)": "Soft subtitles (bilingual)",
+    "Dấu câu mặc định": "Default punctuation",
+    "Khôi phục dấu câu": "Restore punctuation",
+    "Xóa dấu câu": "Remove punctuation",
+    "Cắt nhạc nền": "Trim background music",
+    "Lặp nhạc nền": "Loop background music",
+
+    # Kênh «...» hiện chưa khả dụng, đã tự động quay lại
+    "hiện chưa khả dụng, đã tự động quay lại": "is currently unavailable, reverted automatically",
+
+    # Nhật ký chạy tác vụ
+    "Tệp nguồn: ": "Source file: ",
+    "Nhận dạng: ": "Recognition: ",
+    "  Dịch: ": "  Translate: ",
+    "  Lồng tiếng: ": "  Dubbing: ",
+    "Ngôn ngữ: ": "Language: ",
+    "  Nhân vật: ": "  Voice: ",
+    "▶ Bắt đầu thực hiện dịch video...": "▶ Starting video translation...",
+    "Giai đoạn 1/8: Xử lý trước...": "Stage 1/8: Preprocessing...",
+    "Giai đoạn 2/8: Nhận dạng giọng nói...": "Stage 2/8: Speech recognition...",
+    "Giai đoạn 3/8: Tách người nói...": "Stage 3/8: Speaker diarization...",
+    "Giai đoạn 4/8: Dịch phụ đề...": "Stage 4/8: Translating subtitles...",
+    "Giai đoạn 5/8: Tạo lồng tiếng...": "Stage 5/8: Generating dubbing...",
+    "Giai đoạn 6/8: Đồng bộ âm thanh và hình ảnh...": "Stage 6/8: Syncing audio and video...",
+    "Giai đoạn 7/8: Nhận dạng lần 2...": "Stage 7/8: Second-pass recognition...",
+    "Giai đoạn 8/8: Tổng hợp cuối cùng...": "Stage 8/8: Final assembly...",
+    "Đã xử lý trước xong": "Preprocessing done",
+    "Đã nhận dạng giọng nói xong": "Speech recognition done",
+    "Đã tách người nói xong": "Speaker diarization done",
+    "Đã dịch phụ đề xong": "Subtitle translation done",
+    "Đã tạo lồng tiếng xong": "Dubbing done",
+    "Đã đồng bộ xong": "Sync done",
+    "Đã nhận dạng lần 2 xong": "Second-pass recognition done",
+    "Đã tổng hợp xong": "Assembly done",
+    "Đã ghép video xong": "Video merged",
+    "Toàn bộ tác vụ đã hoàn thành!": "All tasks completed!",
+    "Thư mục đầu ra: ": "Output folder: ",
+    "Lỗi thực hiện: ": "Execution error: ",
+
+    # Trình chỉnh sửa kiểu phụ đề (ASS)
+    "🎨 Chỉnh sửa kiểu phụ đề cứng": "🎨 Edit hardcoded subtitle style",
+    "Sau khi chỉnh sửa, nhấn \"Lưu kiểu\", kiểu sẽ áp dụng cho tất cả tác vụ nhúng phụ đề cứng.": "After editing, click \"Save style\" to apply it to all hardcoded-subtitle tasks.",
+    "Phụ đề chính": "Main subtitle",
+    "Phụ đề dưới (khi song ngữ)": "Bottom subtitle (bilingual)",
+    "Kiểu toàn cục": "Global style",
+    "Tên phông chữ": "Font name",
+    "Cỡ chữ": "Font size",
+    "Màu chính": "Primary color",
+    "Màu viền": "Outline color",
+    "Màu nền": "Background color",
+    "Đậm": "Bold",
+    "Nghiêng": "Italic",
+    "Gạch chân": "Underline",
+    "Gạch ngang": "Strikeout",
+    "Kiểu viền": "Border style",
+    "Viền nét": "Outline",
+    "Nền đục": "Opaque box",
+    "Độ dày viền": "Outline width",
+    "Đổ bóng": "Shadow",
+    "Tỷ lệ ngang %": "Horizontal scale %",
+    "Tỷ lệ dọc %": "Vertical scale %",
+    "Giãn cách chữ": "Letter spacing",
+    "Góc xoay": "Rotation angle",
+    "Lề trái": "Left margin",
+    "Lề phải": "Right margin",
+    "Lề dọc": "Vertical margin",
+    "Vị trí căn chỉnh": "Alignment position",
+    "Dưới trái": "Bottom left",
+    "Dưới giữa": "Bottom center",
+    "Dưới phải": "Bottom right",
+    "Giữa trái": "Middle left",
+    "Chính giữa": "Center",
+    "Giữa phải": "Middle right",
+    "Trên trái": "Top left",
+    "Trên giữa": "Top center",
+    "Trên phải": "Top right",
+    "💾 Lưu kiểu": "💾 Save style",
+    "🔄 Khôi phục mặc định": "🔄 Reset to default",
+    "Trạng thái": "Status",
+    "✅ Đã lưu kiểu": "✅ Style saved",
+    "✅ Đã khôi phục kiểu mặc định": "✅ Default style restored",
+
+    # Cài đặt kênh
+    "### Cài đặt kênh": "### Channel Settings",
+    "Cấu hình địa chỉ API, khóa SK... cho từng kênh. **Sau khi lưu sẽ dùng chung với bản desktop (sp.exe)**, tệp cấu hình lưu tại `videotrans/params.json`.":
+        "Configure API address, API key, etc. for each channel. **Once saved, it is shared with the desktop version (sp.exe)**, config file stored at `videotrans/params.json`.",
+    "Kênh dịch phụ đề": "Subtitle Translation Channels",
+    "Kênh nhận dạng giọng nói": "Speech Recognition Channels",
+    "Kênh lồng tiếng": "Dubbing Channels",
+    "ChatGPT (Dịch)": "ChatGPT (Translate)",
+    "DeepSeek (Dịch)": "DeepSeek (Translate)",
+    "Gemini (Dịch)": "Gemini (Translate)",
+    "AzureGPT (Dịch)": "AzureGPT (Translate)",
+    "Mô hình lớn cục bộ (LocalLLM)": "Local Large Model (LocalLLM)",
+    "DeepL (Dịch)": "DeepL (Translate)",
+    "Baidu Dịch": "Baidu Translate",
+    "Tencent Dịch": "Tencent Translate",
+    "MiniMax (Dịch)": "MiniMax (Translate)",
+    "Zhipu AI (Dịch)": "Zhipu AI (Translate)",
+    "OpenRouter (Dịch)": "OpenRouter (Translate)",
+    "Xiaomi AI (Dịch)": "Xiaomi AI (Translate)",
+    "ByteDance Nhận dạng giọng nói": "ByteDance Speech Recognition",
+    "Qwen-TTS (Cục bộ)": "Qwen-TTS (Local)",
+    "Doubao Tổng hợp giọng nói 2.0": "Doubao Voice Synthesis 2.0",
+    "💾 Lưu": "💾 Save",
+    "✅ Đã lưu": "✅ Saved",
+    "Thiết lập âm thanh tham chiếu": "Reference Audio Setup",
+    "### Cài đặt âm thanh tham chiếu để nhân bản giọng nói": "### Reference Audio Setup for Voice Cloning",
+    "Danh sách âm thanh tham chiếu": "Reference audio list",
+    "💾 Lưu âm thanh tham chiếu": "💾 Save reference audio",
+    "⚠️ Vui lòng nhập thông tin âm thanh tham chiếu": "⚠️ Please enter reference audio information",
+    "⚠️ Lưu thất bại:": "⚠️ Save failed:",
+    "✅ Đã lưu âm thanh tham chiếu": "✅ Reference audio saved",
+
+    # Trường cấu hình kênh dùng chung
+    "Khóa SK": "API Key",
+    "Token đầu ra tối đa": "Max output tokens",
+    "Để trống để dùng API chính thức": "Leave blank to use the official API",
+    "Nhập tên mô hình": "Enter model name",
+    "Token tối đa": "Max tokens",
+    "API URL (bên thứ 3)": "API URL (3rd-party)",
+    "ID bảng thuật ngữ": "Glossary ID",
+    "Khóa bí mật": "Secret key",
+    "Khóa Bailian": "Bailian key",
+    "Mô hình dịch": "Translation model",
+    "Phải bắt đầu bằng qwen-mt": "Must start with qwen-mt",
+    "Mô hình nhận dạng giọng nói": "Speech recognition model",
+    "Phải bắt đầu bằng qwen3-asr": "Must start with qwen3-asr",
+    "Điểm truy cập suy luận": "Inference endpoint",
+    "Nhập tên điểm truy cập": "Enter endpoint name",
+    "Khóa Xiaomi": "Xiaomi key",
+    "Ví dụ: http://127.0.0.1:11434/v1": "e.g. http://127.0.0.1:11434/v1",
+    "Thường điền no-key": "Usually enter no-key",
+    "Ví dụ: eastasia hoặc URL đầy đủ": "e.g. eastasia or full URL",
+    "Prompt (gợi ý)": "Prompt (hint)",
+    "Prompt giọng nói tùy chỉnh": "Custom voice prompt",
+
+    # Tùy chọn nâng cao
+    "Cấu hình tham số nâng cao toàn cục. **Sau khi lưu sẽ dùng chung với bản desktop (sp.exe)**, tệp cấu hình lưu tại `videotrans/cfg.json`.\n⚠️ Một số tham số cần **khởi động lại phần mềm** sau khi thay đổi mới có hiệu lực.":
+        "Configure global advanced parameters. **Once saved, it is shared with the desktop version (sp.exe)**, config file stored at `videotrans/cfg.json`.\n⚠️ Some parameters require **restarting the software** to take effect.",
+    "📋 Cài đặt chung": "📋 General Settings",
+    "📋 Điều khiển xuất video": "📋 Video Output Control",
+    "📋 Tham số nhận dạng giọng nói": "📋 Speech Recognition Parameters",
+    "📋 Điều chỉnh dịch phụ đề": "📋 Subtitle Translation Tuning",
+    "📋 Điều chỉnh lồng tiếng phụ đề": "📋 Subtitle Dubbing Tuning",
+    "📋 Đồng bộ âm thanh và hình ảnh": "📋 Audio-Video Sync",
+    "📋 Prompt mẫu cho Whisper": "📋 Whisper Prompt Templates",
+    "💾 Lưu ": "💾 Save ",
+    "Cài đặt chung": "General Settings",
+    "Điều khiển xuất video": "Video Output Control",
+    "Tham số nhận dạng giọng nói": "Speech Recognition Parameters",
+    "Điều chỉnh dịch phụ đề": "Subtitle Translation Tuning",
+    "Điều chỉnh lồng tiếng phụ đề": "Subtitle Dubbing Tuning",
+    "Đồng bộ âm thanh và hình ảnh": "Audio-Video Sync",
+    "Prompt mẫu cho Whisper": "Whisper Prompt Templates",
+
+    "Ngôn ngữ giao diện phần mềm": "Software UI language",
+    "Cần khởi động lại sau khi đặt": "Restart required after setting",
+    "Đếm ngược tạm dừng mỗi video": "Pause countdown per video",
+    "Đặt 0 để bỏ qua cửa sổ chỉnh sửa": "Set to 0 to skip the edit window",
+    "Số lần thử lại khi thất bại": "Retry count on failure",
+    "Số dòng phụ đề mỗi lần ngắt câu LLM": "Subtitle lines per LLM sentence split",
+    "Mặc định 20": "Default 20",
+    "Kênh AI ngắt câu LLM": "AI channel for LLM sentence splitting",
+    "Số lượng mỗi đợt xử lý hàng loạt": "Batch size per run",
+    "0=không giới hạn": "0 = unlimited",
+    "Tắt thông báo desktop": "Disable desktop notifications",
+    "Hiển thị tất cả tham số trên giao diện chính?": "Show all parameters on the main interface?",
+    "Thư mục xuất độc lập": "Independent output folder",
+    "Số tác vụ CPU [khởi động lại]": "Number of CPU tasks [restart required]",
+    "Không vượt quá số nhân CPU": "Must not exceed the number of CPU cores",
+    "Số tác vụ GPU [khởi động lại]": "Number of GPU tasks [restart required]",
+    "Nhiều card hoặc VRAM>24G mới >1": "Only use >1 with multiple GPUs or VRAM>24G",
+    "Chế độ nhiều card GPU [khởi động lại]": "Multi-GPU mode [restart required]",
+
+    "Chất lượng video (0=không mất, 51=kém)": "Video quality (0=lossless, 51=poor)",
+    "Tỷ lệ nén": "Compression ratio",
+    "ultrafast→veryslow": "ultrafast→veryslow",
+    "Mã hóa 264/265": "264/265 codec",
+    "Định dạng xuất": "Output format",
+    "mp4/mkv": "mp4/mkv",
+    "Chế độ khung hình": "Frame rate mode",
+    "vfr/cfr": "vfr/cfr",
+    "Buộc mã hóa mềm?": "Force software encoding?",
+    "Giải mã cứng cuda": "CUDA hardware decoding",
+    "Tham số ffmpeg tùy chỉnh": "Custom ffmpeg parameters",
+
+    "Chọn VAD": "Select VAD",
+    "tenvad/silero": "tenvad/silero",
+    "Ngưỡng giọng nói": "Speech threshold",
+    "Ngưỡng không có giọng nói": "No-speech threshold",
+    "Thời lượng giọng nói tối đa (giây)": "Max speech duration (s)",
+    "Thời lượng giọng nói tối thiểu (ms)": "Min speech duration (ms)",
+    "Tách im lặng (ms)": "Silence split (ms)",
+    "Tối đa nhận dạng lần 2 (giây)": "Max 2nd-pass recognition (s)",
+    "Tối thiểu nhận dạng lần 2 (ms)": "Min 2nd-pass recognition (ms)",
+    "Gộp phụ đề quá ngắn": "Merge overly short subtitles",
+    "Tách trước bằng Whisper?": "Pre-split with Whisper?",
+    "Chọn khi lồng tiếng clone": "Enable when dubbing with voice cloning",
+    "Mô hình tách người nói": "Speaker diarization model",
+    "built-in/pyannote": "built-in/pyannote",
+    "Huggingface token": "Huggingface token",
+    "Cần cho pyannote": "Required for pyannote",
+    "Kiểu dữ liệu tính toán": "Compute data type",
+    "int8/float16/float32": "int8/float16/float32",
+    "1-5": "1-5",
+    "Nhận thức ngữ cảnh": "Context awareness",
+    "Phạt lặp lại": "Repetition penalty",
+    "Tỷ lệ nén văn bản": "Text compression ratio",
+    "Nhiệt độ lấy mẫu": "Sampling temperature",
+    "Từ khóa nóng": "Hotwords",
+    "Phân cách bằng dấu phẩy": "Comma-separated",
+    "Số đoạn cắt Gemini": "Gemini chunk count",
+    "Chuyển phiến thể sang giản thể": "Convert traditional to simplified",
+    "Xóa dấu câu cuối": "Remove trailing punctuation",
+    "Mô hình faster-whisper": "faster-whisper models",
+    "Mô hình whisper.cpp": "whisper.cpp models",
+
+    "Số dòng mỗi đợt dịch truyền thống": "Lines per traditional translation batch",
+    "Số dòng mỗi đợt dịch AI": "Lines per AI translation batch",
+    "Giá trị nhiệt độ AI": "AI temperature value",
+    "Mặc định 1.0": "Default 1.0",
+    "Tạm dừng sau dịch (giây)": "Pause after translation (s)",
+    "Gửi toàn bộ phụ đề": "Send all subtitles at once",
+    "Dịch tất cả các dòng cùng lúc": "Translate all lines at once",
+    "Cần mô hình ngữ cảnh siêu dài": "Requires an ultra-long context model",
+
+    "Số luồng lồng tiếng đồng thời": "Concurrent dubbing threads",
+    "Tạm dừng sau lồng tiếng (giây)": "Pause after dubbing (s)",
+    "Xóa khoảng lặng trước/sau lồng tiếng": "Remove silence before/after dubbing",
+    "Giữ lại tệp lồng tiếng mỗi dòng": "Keep per-line dubbing audio files",
+    "Chuẩn hóa văn bản": "Normalize text",
+    "Giá trị giọng ChatTTS": "ChatTTS voice value",
+    "Số tác vụ đồng thời EdgeTTS": "Concurrent EdgeTTS tasks",
+    "Càng lớn càng nhanh nhưng dễ bị giới hạn": "Higher is faster but more likely to be rate-limited",
+    "Số lần thử lại EdgeTTS": "EdgeTTS retry count",
+    "Số luồng tách giọng nói": "Voice separation threads",
+    "Mô hình tách âm thanh nền": "Background audio separation model",
+
+    "Biên độ tăng tốc âm thanh tối đa": "Max audio speed-up ratio",
+    "Mặc định 100": "Default 100",
+    "Biên độ làm chậm video tối đa": "Max video slow-down ratio",
+    "Mặc định 10, ≤10": "Default 10, ≤10",
+    "Số ký tự mỗi dòng phụ đề Trung/Nhật/Hàn": "Characters per line for CJK subtitles",
+    "Số ký tự mỗi dòng phụ đề ngôn ngữ khác": "Characters per line for other languages",
+
+    # Tên kênh / ngôn ngữ động (từ videotrans/language/vi.json)
+    "Tích hợp sẵn": "Built-in",
+    "Cục bộ ": "Local ",
+    "miễn phí": "Free",
+    "Edge-TTS (miễn phí)": "Edge-TTS (Free)",
+    "FunASR (Tiếng Trung)": "Alibaba FunASR",
+    "FireRed": "FireRed Chinese",
+    "Dolphin": "Dolphin Asian",
+    "parakeet-ja": "parakeet Japanese",
+    "OpenAI Speech to Text": "OpenAI STT API",
+    "Alibaba Qwen3-ASR": "Bailian / Qwen3-ASR",
+    "ByteDance Volcano STT": "ByteDance STT Turbo",
+    "Google Speech to Text": "Google STT API (Free)",
+    "API tùy chỉnh": "Custom API",
+    "ZipVoice": "ZipVoice ZH/EN",
+    "VITS": "VITS ZH/EN",
+    "Doubao2": "Doubao Voice 2.0",
+    "Alibaba Bailian": "Bailian API",
+    "Google (miễn phí)": "Google Translate (Free)",
+    "Microsoft (miễn phí)": "Microsoft Translate (Free)",
+    "LLM cục bộ": "CompatibleAI/LocalModel",
+    "ByteDance Volcano LLM": "ByteDance Ark LLM",
+    "Tencent": "Tencent Translate",
+    "Baidu": "Baidu Translate",
+    "Alibaba dịch máy": "Alibaba Machine Translation",
+
+    # Tên ngôn ngữ hiển thị
+    "Tiếng Anh": "English",
+    "Tiếng Trung giản thể": "Simplified Chinese",
+    "Tiếng Trung phồn thể": "Traditional Chinese",
+    "Tiếng Pháp": "French",
+    "Tiếng Đức": "German",
+    "Tiếng Nhật": "Japanese",
+    "Tiếng Hàn": "Korean",
+    "Tiếng Nga": "Russian",
+    "Tiếng Tây Ban Nha": "Spanish",
+    "Tiếng Thái": "Thai",
+    "Tiếng Ý": "Italian",
+    "Tiếng Hy Lạp": "Greek",
+    "Tiếng Bồ Đào Nha": "Portuguese",
+    "Tiếng Việt": "Vietnamese",
+    "Tiếng Ả Rập": "Arabic",
+    "Tiếng Thổ Nhĩ Kỳ": "Turkish",
+    "Tiếng Hindi": "Hindi",
+    "Tiếng Hungary": "Hungarian",
+    "Tiếng Ukraina": "Ukrainian",
+    "Tiếng Indonesia": "Indonesian",
+    "Tiếng Mã Lai": "Malay",
+    "Tiếng Kazakh": "Kazakh",
+    "Tiếng Séc": "Czech",
+    "Tiếng Ba Lan": "Polish",
+    "Tiếng Hà Lan": "Dutch",
+    "Tiếng Thụy Điển": "Swedish",
+    "Tiếng Do Thái": "Hebrew",
+    "Tiếng Bengal": "Bengali",
+    "Tiếng Ba Tư": "Persian",
+    "Tiếng Philippines": "Filipino",
+    "Tiếng Urdu": "Urdu",
+    "Tiếng Na Uy": "Norwegian(Bokmål)",
+    "Tiếng Quảng Đông": "Cantonese",
+    "Tiếng Khmer": "Khmer",
+    "Tiếng Romania": "Romanian",
+}
+
+# JS: quét toàn bộ văn bản trong trang và thay thế theo từ điển VI<->EN khi
+# người dùng đổi ngôn ngữ giao diện (chỉ thay đổi hiển thị, không ảnh hưởng
+# tới giá trị dữ liệu Python phía sau, do choices/values gốc không đổi)
+_UI_LANG_CORE_JS = """
+    if (!window.__pyvtI18nInit) {
+        window.__pyvtViToEn = %(MAP_JSON)s;
+        window.__pyvtEnToVi = Object.fromEntries(
+            Object.entries(window.__pyvtViToEn).map(([k, v]) => [v, k])
+        );
+        window.__pyvtEscapeRe = function (s) {
+            return s.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
+        };
+        window.__pyvtBuildRe = function (map) {
+            const keys = Object.keys(map).sort((a, b) => b.length - a.length);
+            if (!keys.length) return null;
+            return new RegExp(keys.map(window.__pyvtEscapeRe).join('|'), 'g');
+        };
+        // Dùng 1 regex gộp tất cả các khóa, thay thế 1 lượt duy nhất dựa trên
+        // chuỗi GỐC (không lặp lại theo từng khóa) để tránh thay thế chồng lặp
+        // khi giá trị thay thế của 1 khóa lại chứa 1 khóa khác làm chuỗi con
+        // (vd: "Baidu Dịch" -> "Baidu Translate" và "Baidu" -> "Baidu Translate").
+        window.__pyvtViRe = window.__pyvtBuildRe(window.__pyvtViToEn);
+        window.__pyvtEnRe = window.__pyvtBuildRe(window.__pyvtEnToVi);
+        window.__pyvtReplace = function (str, map, re) {
+            if (!re || !str) return str;
+            return str.replace(re, (m) => (Object.prototype.hasOwnProperty.call(map, m) ? map[m] : m));
+        };
+        window.__pyvtApply = function () {
+            const isEn = window.__pyvtLang === 'en';
+            const map = isEn ? window.__pyvtViToEn : window.__pyvtEnToVi;
+            const re = isEn ? window.__pyvtViRe : window.__pyvtEnRe;
+            const curLang = window.__pyvtLang;
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+            const nodes = [];
+            let n;
+            while ((n = walker.nextNode())) nodes.push(n);
+            for (const tn of nodes) {
+                // Bỏ qua node đã được chuyển sang đúng ngôn ngữ hiện tại, tránh
+                // thay thế chồng lặp khi 1 khóa (vd "Baidu") là chuỗi con ASCII
+                // xuất hiện lại bên trong giá trị đã dịch (vd "Baidu Translate").
+                if (tn.__pyvtLangDone === curLang) continue;
+                if (!tn.nodeValue || !tn.nodeValue.trim()) { tn.__pyvtLangDone = curLang; continue; }
+                const r = window.__pyvtReplace(tn.nodeValue, map, re);
+                if (r !== tn.nodeValue) tn.nodeValue = r;
+                tn.__pyvtLangDone = curLang;
+            }
+            document.querySelectorAll('input, textarea').forEach((el) => {
+                if (el.__pyvtLangDone === curLang) return;
+                if (el.value) {
+                    const r = window.__pyvtReplace(el.value, map, re);
+                    if (r !== el.value) el.value = r;
+                }
+                if (el.placeholder) {
+                    const r = window.__pyvtReplace(el.placeholder, map, re);
+                    if (r !== el.placeholder) el.placeholder = r;
+                }
+                el.__pyvtLangDone = curLang;
+            });
+            document.querySelectorAll('[title]').forEach((el) => {
+                if (el.__pyvtTitleLangDone === curLang) return;
+                const r = window.__pyvtReplace(el.title, map, re);
+                if (r !== el.title) el.title = r;
+                el.__pyvtTitleLangDone = curLang;
+            });
+        };
+        document.addEventListener('click', () => setTimeout(window.__pyvtApply, 60));
+        document.addEventListener('focusin', () => setTimeout(window.__pyvtApply, 60));
+        window.__pyvtI18nInit = true;
+    }
+""" % {"MAP_JSON": json.dumps(UI_I18N_VI_EN, ensure_ascii=False)}
+
+# JS: xử lý khi người dùng đổi radio ngôn ngữ
+_UI_LANG_JS = """
+(lang) => {
+""" + _UI_LANG_CORE_JS + """
+    window.__pyvtLang = (lang.indexOf('English') !== -1) ? 'en' : 'vi';
+    window.__pyvtApply();
+    return lang;
+}
+"""
+
+# JS: áp dụng ngôn ngữ mặc định (Tiếng Anh) ngay khi trang tải xong, vì giá
+# trị mặc định của ui_lang_switch là "English" nhưng nội dung Python vẫn
+# render bằng tiếng Việt.
+_UI_LANG_INIT_JS = """
+() => {
+""" + _UI_LANG_CORE_JS + """
+    window.__pyvtLang = 'en';
+    window.__pyvtApply();
+}
+"""
+
+# JS: bật/tắt giao diện tối bằng cách gắn/gỡ lớp "dark" trên thẻ <html>
+# (theo quy ước biến CSS chủ đề của Gradio), đồng thời lưu lựa chọn vào
+# localStorage để giữ nguyên khi tải lại trang.
+_THEME_JS = """
+(theme) => {
+    const isDark = theme.indexOf('Tối') !== -1 || theme.indexOf('Dark') !== -1;
+    document.documentElement.classList.toggle('dark', isDark);
+    try { localStorage.setItem('pyvt_theme', isDark ? 'dark' : 'light'); } catch (e) {}
+    return theme;
+}
+"""
+
+# JS: khôi phục giao diện đã lưu ngay khi trang tải xong; mặc định là tối
+# trừ khi người dùng từng chọn sáng trước đó (lưu trong localStorage).
+_THEME_INIT_JS = """
+() => {
+    try {
+        if (localStorage.getItem('pyvt_theme') === 'light') {
+            document.documentElement.classList.remove('dark');
+        } else {
+            document.documentElement.classList.add('dark');
+        }
+    } catch (e) {
+        document.documentElement.classList.add('dark');
+    }
+}
+"""
+
+
+# ---------------------------------------------------------------------------
 # Xây dựng giao diện
 # ---------------------------------------------------------------------------
 def build_ui():
     import gradio as gr
 
     with gr.Blocks(title="pyVideoTrans WebUI") as app:
-        gr.Markdown("""
+        with gr.Row():
+            with gr.Column(scale=5):
+                gr.Markdown("""
 # pyVideoTrans Dịch Video WebUI
 > [Giao diện này chỉ triển khai một phần tính năng, để dùng đầy đủ tính năng vui lòng dùng bản desktop (sp.exe hoặc sp.py)](https://pyvideotrans.com)
 >
@@ -924,7 +1405,26 @@ def build_ui():
 >  [Mã nguồn](https://github.com/jianchang512/pyvideotrans) |
 >  [Gặp sự cố](https://bbs.pyvideotrans.com)
 ----
-        """)
+                """)
+            with gr.Column(scale=1, min_width=170):
+                ui_lang_switch = gr.Radio(
+                    choices=["🇻🇳 Tiếng Việt", "🇬🇧 English"],
+                    value="�🇧 English",
+                    label="🌐 Ngôn ngữ / Language",
+                    interactive=True,
+                )
+                theme_switch = gr.Radio(
+                    choices=["☀️ Sáng", "🌙 Tối"],
+                    value="🌙 Tối",
+                    label="🎨 Giao diện",
+                    interactive=True,
+                )
+        # Chỉ đổi văn bản hiển thị trên trình duyệt (JS), không gọi về Python,
+        # không ảnh hưởng giá trị dữ liệu (choices/value) gốc của các control.
+        ui_lang_switch.change(fn=None, inputs=[ui_lang_switch], outputs=[], js=_UI_LANG_JS)
+        theme_switch.change(fn=None, inputs=[theme_switch], outputs=[], js=_THEME_JS)
+        app.load(fn=None, inputs=[], outputs=[], js=_THEME_INIT_JS)
+        app.load(fn=None, inputs=[], outputs=[], js=_UI_LANG_INIT_JS)
 
         with gr.Tabs():
             # === Tab 1: Dịch video ===
