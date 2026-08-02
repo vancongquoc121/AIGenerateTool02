@@ -1664,17 +1664,18 @@ def build_ui():
                         if remove_hardsub_val:
                             yield log("🧹 Đang xóa phụ đề cứng gốc bằng video-subtitle-remover (VSR)..."), None, [], _BTN_RUNNING
                             try:
-                                from videotrans.util.subtitle_remover import remove_hard_subtitle, SubtitleRemoverError
+                                from videotrans.util.subtitle_remover import iter_remove_hard_subtitle, SubtitleRemoverError
                                 _vsr_out_dir = Path(TEMP_DIR) / "vsr_cache"
                                 _vsr_out_dir.mkdir(parents=True, exist_ok=True)
                                 _vsr_output = str(_vsr_out_dir / f"nosub_{Path(file_path).stem}.mp4")
-                                remove_hard_subtitle(
+                                for _vsr_line in iter_remove_hard_subtitle(
                                     input_path=_effective_file_path,
                                     output_path=_vsr_output,
                                     vsr_dir=settings.get('vsr_dir', ''),
                                     vsr_python=settings.get('vsr_python', ''),
                                     inpaint_mode=settings.get('vsr_inpaint_mode', ''),
-                                )
+                                ):
+                                    yield log(f"[VSR] {_vsr_line}"), None, [], _BTN_RUNNING
                                 _effective_file_path = _vsr_output
                                 yield log("✓ Đã xóa phụ đề cứng gốc xong"), None, [], _BTN_RUNNING
                             except SubtitleRemoverError as e:
