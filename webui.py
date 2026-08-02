@@ -691,8 +691,10 @@ def build_channel_settings():
 COMBO_BOX_KEYS = {
     'cuda_com_type', 'llm_ai_type', 'vad_type', 'speaker_type',
     'video_codec', 'preset', 'lang', 'uvr_models', 'out_video_ext', 'fps_mode',
+    'vsr_inpaint_mode',
 }
 COMBO_BOX_OPTIONS = {
+    "vsr_inpaint_mode": ['sttn-auto', 'sttn-det', 'lama', 'propainter', 'opencv'],
     "cuda_com_type": ['default', 'auto', 'int8', 'int16', 'float16', 'float32', 'bfloat16', 'int8_float16', 'int8_float32', 'int8_bfloat16'],
     "fps_mode": ["vfr", "cfr"],
     "llm_ai_type": ['chatgpt', 'deepseek'],
@@ -788,9 +790,14 @@ def build_advanced_settings():
             _w("process_max", "Số tác vụ CPU [khởi động lại]", "Không vượt quá số nhân CPU")
             _w("process_max_gpu", "Số tác vụ GPU [khởi động lại]", "Nhiều card hoặc VRAM>24G mới >1")
             _w("multi_gpus", "Chế độ nhiều card GPU [khởi động lại]", "")
+        with gr.Row():
+            _w("vsr_dir", "Thư mục cài video-subtitle-remover", "Chứa backend/main.py, để trống để tắt xóa phụ đề cứng gốc")
+            _w("vsr_python", "Python thực thi của VSR", "Để trống dùng python hiện tại")
+            _w("vsr_inpaint_mode", "Thuật toán xóa phụ đề VSR", "sttn-auto/sttn-det/lama/propainter/opencv")
         _save_section("common", ["lang", "countdown_sec", "retry_nums", "llm_chunk_size", "llm_ai_type",
                                   "batch_nums", "dont_notify", "show_more_settings", "homedir",
-                                  "process_max", "process_max_gpu", "multi_gpus"])
+                                  "process_max", "process_max_gpu", "multi_gpus",
+                                  "vsr_dir", "vsr_python", "vsr_inpaint_mode"])
 
     # ---- Điều khiển xuất video ----
     with gr.Accordion("📋 Điều khiển xuất video", open=False):
@@ -946,6 +953,7 @@ UI_I18N_VI_EN = {
     "Nhúng lại âm thanh nền": "Re-embed background audio",
     "Xử lý âm thanh nền": "Background audio handling",
     "Âm lượng nền": "Background volume",
+    "Xóa phụ đề cứng gốc trước khi dịch (video-subtitle-remover)": "Remove original hardcoded subtitles before translation (video-subtitle-remover)",
     "Bật tăng tốc CUDA": "Enable CUDA acceleration",
     "🚀 Bắt đầu thực hiện": "🚀 Start",
     "Nhật ký thực thi": "Execution log",
@@ -1131,6 +1139,12 @@ UI_I18N_VI_EN = {
     "Số tác vụ GPU [khởi động lại]": "Number of GPU tasks [restart required]",
     "Nhiều card hoặc VRAM>24G mới >1": "Only use >1 with multiple GPUs or VRAM>24G",
     "Chế độ nhiều card GPU [khởi động lại]": "Multi-GPU mode [restart required]",
+    "Thư mục cài video-subtitle-remover": "video-subtitle-remover install folder",
+    "Chứa backend/main.py, để trống để tắt xóa phụ đề cứng gốc": "Contains backend/main.py; leave blank to disable original hardsub removal",
+    "Python thực thi của VSR": "VSR python executable",
+    "Để trống dùng python hiện tại": "Leave blank to use current python",
+    "Thuật toán xóa phụ đề VSR": "VSR removal algorithm",
+    "sttn-auto/sttn-det/lama/propainter/opencv": "sttn-auto/sttn-det/lama/propainter/opencv",
 
     "Chất lượng video (0=không mất, 51=kém)": "Video quality (0=lossless, 51=poor)",
     "Tỷ lệ nén": "Compression ratio",
@@ -1479,6 +1493,8 @@ def build_ui():
                             with gr.Row():
                                 loop_bgm = gr.Dropdown(choices=list(LOOP_BGM_OPTIONS.keys()), value="Cắt nhạc nền", label="Xử lý âm thanh nền", interactive=True)
                                 backaudio_volume = gr.Slider(minimum=0.0, maximum=2.0, value=float(_user_params.get("backaudio_volume", settings.get("backaudio_volume", 0.8))), step=0.1, label="Âm lượng nền")
+                            with gr.Row():
+                                remove_hardsub = gr.Checkbox(label="Xóa phụ đề cứng gốc trước khi dịch (video-subtitle-remover)", value=False)
 
                         cuda_accel = gr.Checkbox(label="Bật tăng tốc CUDA", value=False)
                         channel_warning = gr.Markdown("", visible=False)
@@ -1585,7 +1601,7 @@ def build_ui():
                                     voice_rate_val, volume_rate_val, pitch_rate_val,
                                     subtitle_type_name, remove_noise_val, fix_punc_name,
                                     is_separate_val, embed_bgm_val, loop_bgm_name, backaudio_volume_val,
-                                    cuda_val):
+                                    remove_hardsub_val, cuda_val):
                     print(f'{file_path=}')
                     if not file_path:
                         yield "❌ Vui lòng chọn một tệp video hoặc âm thanh trước", None, [], _BTN_IDLE
@@ -1629,7 +1645,27 @@ def build_ui():
                         print(_gpu_status_msg, flush=True)
                         yield log(_gpu_status_msg), None, [], _BTN_RUNNING
 
-                        _file_obj = tools.format_video(Path(file_path).absolute().as_posix())
+                        _effective_file_path = Path(file_path).absolute().as_posix()
+                        if remove_hardsub_val:
+                            yield log("🧹 Đang xóa phụ đề cứng gốc bằng video-subtitle-remover (VSR)..."), None, [], _BTN_RUNNING
+                            try:
+                                from videotrans.util.subtitle_remover import remove_hard_subtitle, SubtitleRemoverError
+                                _vsr_out_dir = Path(TEMP_DIR) / "vsr_cache"
+                                _vsr_out_dir.mkdir(parents=True, exist_ok=True)
+                                _vsr_output = str(_vsr_out_dir / f"nosub_{Path(file_path).stem}.mp4")
+                                remove_hard_subtitle(
+                                    input_path=_effective_file_path,
+                                    output_path=_vsr_output,
+                                    vsr_dir=settings.get('vsr_dir', ''),
+                                    vsr_python=settings.get('vsr_python', ''),
+                                    inpaint_mode=settings.get('vsr_inpaint_mode', ''),
+                                )
+                                _effective_file_path = _vsr_output
+                                yield log("✓ Đã xóa phụ đề cứng gốc xong"), None, [], _BTN_RUNNING
+                            except SubtitleRemoverError as e:
+                                yield log(f"⚠️ Xóa phụ đề cứng gốc thất bại, dùng video gốc: {e}"), None, [], _BTN_RUNNING
+
+                        _file_obj = tools.format_video(_effective_file_path)
                         _nospacebasename = _file_obj["basename"].replace(" ", "-").replace(".", "-")
                         _cache_folder = f'{TEMP_DIR}/{_file_obj["uuid"]}'
                         app_cfg.rm_uuid(_file_obj['uuid'])
@@ -1645,7 +1681,7 @@ def build_ui():
                         Path(_target_dir).mkdir(parents=True, exist_ok=True)
                         
                         from dataclasses import asdict
-                        common_params = {'name': file_path, "cache_folder": _cache_folder}
+                        common_params = {'name': _effective_file_path, "cache_folder": _cache_folder}
                         common_params.update(asdict(_file_obj))
                         yield log(f"Tệp nguồn: {Path(file_path).name}"), None, [], _BTN_RUNNING
 
@@ -1729,7 +1765,8 @@ def build_ui():
                             source_lang, target_lang, tts_choice, voice_role,
                             voice_autorate, video_autorate, voice_rate, volume_rate, pitch_rate,
                             subtitle_type, remove_noise, fix_punc,
-                            is_separate, embed_bgm, loop_bgm, backaudio_volume, cuda_accel],
+                            is_separate, embed_bgm, loop_bgm, backaudio_volume,
+                            remove_hardsub, cuda_accel],
                     outputs=[log_output, video_preview, result_files, start_btn])
 
             # === Tab 2: Cài đặt kênh ===
