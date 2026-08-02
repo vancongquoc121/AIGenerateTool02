@@ -915,7 +915,7 @@ def build_advanced_settings():
 # ---------------------------------------------------------------------------
 UI_I18N_VI_EN = {
     # Tiêu đề / thẻ tab
-    "pyVideoTrans Dịch Video WebUI": "AIGenerate Video Translation WebUI",
+    "AIGenerate Video Translation WebUI": "AIGenerate Video Translation WebUI",
     "Giao diện này chỉ triển khai một phần tính năng, để dùng đầy đủ tính năng vui lòng dùng bản desktop (sp.exe hoặc sp.py)": "This interface only implements a subset of features, please use the desktop version (sp.exe or sp.py) for full features",
     "Tài liệu sử dụng": "Documentation",
     "Mã nguồn": "Source code",
@@ -1398,7 +1398,7 @@ def build_ui():
         with gr.Row():
             with gr.Column(scale=5):
                 gr.Markdown("""
-# pyVideoTrans Dịch Video WebUI
+# AIGenerate Video Translation WebUI
 > [Giao diện này chỉ triển khai một phần tính năng, để dùng đầy đủ tính năng vui lòng dùng bản desktop (sp.exe hoặc sp.py)](https://pyvideotrans.com)
 >
 >  [Tài liệu sử dụng](https://pyvideotrans.com) |
