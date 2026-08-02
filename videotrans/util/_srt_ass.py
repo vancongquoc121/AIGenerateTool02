@@ -44,7 +44,7 @@ def set_ass_font(srtfile: str) -> str:
 
     default_style = (
         f"Style: {style.get('Name', 'Default')},"
-        f"{style.get('Fontname', 'Arial')},"
+        f"{style.get('Fontname', 'Noto Sans')},"
         f"{style.get('Fontsize', 16)},"
         f"{style.get('PrimaryColour', '&H00FFFFFF&')},"
         f"{style.get('SecondaryColour', '&H00FFFFFF&')},"
@@ -78,7 +78,7 @@ def set_ass_font(srtfile: str) -> str:
 
     bottom_style = (
         f"Style: Bottom,"
-        f"{style.get('Fontname', 'Arial')},"
+        f"{style.get('Fontname', 'Noto Sans')},"
         f"{bottom_fontsize},"
         f"{bottom_color},"
         f"{bottom_secondarycolour},"

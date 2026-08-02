@@ -120,7 +120,7 @@ LOOP_BGM_OPTIONS = {"Cắt nhạc nền": 0, "Lặp nhạc nền": 1}
 ASS_JSON_FILE = f'{ROOT_DIR}/videotrans/ass.json'
 
 DEFAULT_ASS_STYLE = {
-    'Name': 'Default', 'Fontname': 'Arial', 'Bottom_Fontname': 'Arial',
+    'Name': 'Default', 'Fontname': 'Noto Sans', 'Bottom_Fontname': 'Noto Sans',
     'Fontsize': 16, 'Bottom_Fontsize': 16,
     'PrimaryColour': '&H00FFFFFF&', 'Bottom_PrimaryColour': '&H00FFFFFF&',
     'SecondaryColour': '&H00FFFFFF&', 'OutlineColour': '&H00000000&', 'BackColour': '&H00000000&',
@@ -474,7 +474,7 @@ def build_ass_editor():
         with gr.Tabs():
             with gr.Tab("Phụ đề chính"):
                 with gr.Row():
-                    ass_fontname = gr.Textbox(label="Tên phông chữ", value=style.get('Fontname', 'Arial'))
+                    ass_fontname = gr.Textbox(label="Tên phông chữ", value=style.get('Fontname', 'Noto Sans'))
                     ass_fontsize = gr.Slider(label="Cỡ chữ", minimum=1, maximum=200, value=style.get('Fontsize', 16), step=1)
                 with gr.Row():
                     ass_primary_color = gr.ColorPicker(label="Màu chính", value=_parse_ass_color(style.get('PrimaryColour', '&H00FFFFFF&')))
@@ -487,7 +487,7 @@ def build_ass_editor():
                     ass_strikeout = gr.Checkbox(label="Gạch ngang", value=bool(style.get('StrikeOut', 0)))
             with gr.Tab("Phụ đề dưới (khi song ngữ)"):
                 with gr.Row():
-                    ass_bottom_fontname = gr.Textbox(label="Tên phông chữ", value=style.get('Bottom_Fontname', 'Arial'))
+                    ass_bottom_fontname = gr.Textbox(label="Tên phông chữ", value=style.get('Bottom_Fontname', 'Noto Sans'))
                     ass_bottom_fontsize = gr.Slider(label="Cỡ chữ", minimum=1, maximum=200, value=style.get('Bottom_Fontsize', 16), step=1)
                 with gr.Row():
                     ass_bottom_primary_color = gr.ColorPicker(label="Màu chính", value=_parse_ass_color(style.get('Bottom_PrimaryColour', '&H00FFFFFF&')))
@@ -1614,6 +1614,21 @@ def build_ui():
                         app_cfg.exec_mode = 'cli'
                         
                         getset_gpu()
+                        # In rõ trạng thái GPU ra console/terminal (vd để xem trên Colab) và vào log UI
+                        _gpu_ok = app_cfg.NVIDIA_GPU_NUMS > 0
+                        _gpu_name = ""
+                        if _gpu_ok:
+                            import torch
+                            _gpu_name = torch.cuda.get_device_name(0)
+                        _gpu_status_msg = (
+                            f"🖥️ GPU phát hiện: {_gpu_name} (số card khả dụng: {app_cfg.NVIDIA_GPU_NUMS})"
+                            if _gpu_ok else "🖥️ Không phát hiện GPU khả dụng, sẽ chạy bằng CPU"
+                        )
+                        if cuda_val and not _gpu_ok:
+                            _gpu_status_msg += " ⚠️ Đã bật tăng tốc CUDA nhưng không tìm thấy GPU!"
+                        print(_gpu_status_msg, flush=True)
+                        yield log(_gpu_status_msg), None, [], _BTN_RUNNING
+
                         _file_obj = tools.format_video(Path(file_path).absolute().as_posix())
                         _nospacebasename = _file_obj["basename"].replace(" ", "-").replace(".", "-")
                         _cache_folder = f'{TEMP_DIR}/{_file_obj["uuid"]}'

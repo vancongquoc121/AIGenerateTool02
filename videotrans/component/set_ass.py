@@ -19,8 +19,8 @@ PREVIEW_IMAGE = f'{ROOT_DIR}/videotrans/styles/preview.png'
 
 DEFAULT_STYLE = {
     'Name': 'Default',
-    'Fontname': 'Arial',
-    'Bottom_Fontname': 'Arial',
+    'Fontname': 'Noto Sans',
+    'Bottom_Fontname': 'Noto Sans',
     'Fontsize': 16,
     'Bottom_Fontsize': 16,
     'PrimaryColour': '&H00FFFFFF&',
