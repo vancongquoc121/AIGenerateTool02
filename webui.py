@@ -113,6 +113,7 @@ SUBTITLE_TYPES = {"Không nhúng phụ đề": 0, "Nhúng phụ đề cứng": 1
 DEFAULT_SUBTITLE_TYPE = "Nhúng phụ đề cứng"
 PUNC_OPTIONS = {"Dấu câu mặc định": 0, "Khôi phục dấu câu": 1, "Xóa dấu câu": 2}
 LOOP_BGM_OPTIONS = {"Cắt nhạc nền": 0, "Lặp nhạc nền": 1}
+WATERMARK_POSITION_OPTIONS = {"Trên trái": "top-left", "Trên phải": "top-right", "Dưới trái": "bottom-left", "Dưới phải": "bottom-right", "Chính giữa": "center"}
 
 # ---------------------------------------------------------------------------
 # Kiểu phụ đề ASS
@@ -954,6 +955,12 @@ UI_I18N_VI_EN = {
     "Xử lý âm thanh nền": "Background audio handling",
     "Âm lượng nền": "Background volume",
     "Xóa phụ đề cứng gốc trước khi dịch (video-subtitle-remover)": "Remove original hardcoded subtitles before translation (video-subtitle-remover)",
+    "🏷️ Watermark bản quyền": "🏷️ Copyright Watermark",
+    "Chữ watermark bản quyền": "Copyright watermark text",
+    "Để trống để tắt, ví dụ: © 2026 Kênh của bạn": "Leave blank to disable, e.g. © 2026 Your Channel",
+    "Vị trí": "Position",
+    "Cỡ chữ": "Font size",
+    "Màu chữ (tên hoặc mã hex, vd white/yellow/#FFCC00)": "Text color (name or hex code, e.g. white/yellow/#FFCC00)",
     "Bật tăng tốc CUDA": "Enable CUDA acceleration",
     "🚀 Bắt đầu thực hiện": "🚀 Start",
     "Nhật ký thực thi": "Execution log",
@@ -1496,6 +1503,13 @@ def build_ui():
                             with gr.Row():
                                 remove_hardsub = gr.Checkbox(label="Xóa phụ đề cứng gốc trước khi dịch (video-subtitle-remover)", value=False)
 
+                        with gr.Accordion("🏷️ Watermark bản quyền", open=False):
+                            watermark_text = gr.Textbox(label="Chữ watermark bản quyền", placeholder="Để trống để tắt, ví dụ: © 2026 Kênh của bạn")
+                            with gr.Row():
+                                watermark_pos = gr.Dropdown(choices=list(WATERMARK_POSITION_OPTIONS.keys()), value="Dưới phải", label="Vị trí", interactive=True)
+                                watermark_fontsize = gr.Slider(minimum=10, maximum=72, value=24, step=1, label="Cỡ chữ")
+                                watermark_color = gr.Textbox(value="white", label="Màu chữ (tên hoặc mã hex, vd white/yellow/#FFCC00)")
+
                         cuda_accel = gr.Checkbox(label="Bật tăng tốc CUDA", value=False)
                         channel_warning = gr.Markdown("", visible=False)
                         
@@ -1601,7 +1615,8 @@ def build_ui():
                                     voice_rate_val, volume_rate_val, pitch_rate_val,
                                     subtitle_type_name, remove_noise_val, fix_punc_name,
                                     is_separate_val, embed_bgm_val, loop_bgm_name, backaudio_volume_val,
-                                    remove_hardsub_val, cuda_val):
+                                    remove_hardsub_val, watermark_text_val, watermark_pos_name,
+                                    watermark_fontsize_val, watermark_color_val, cuda_val):
                     print(f'{file_path=}')
                     if not file_path:
                         yield "❌ Vui lòng chọn một tệp video hoặc âm thanh trước", None, [], _BTN_IDLE
@@ -1749,6 +1764,20 @@ def build_ui():
                                         video_preview_path = str(f)
                                     elif f.suffix.lower() in ('.mkv', '.wav', '.srt', '.txt', '.mp3'):
                                         output_files.append(str(f))
+
+                        if watermark_text_val and watermark_text_val.strip() and video_preview_path:
+                            yield log("🏷️ Đang thêm watermark bản quyền vào video..."), None, [], _BTN_RUNNING
+                            try:
+                                from videotrans.util.watermark import add_text_watermark
+                                add_text_watermark(
+                                    video_preview_path, watermark_text_val,
+                                    position=WATERMARK_POSITION_OPTIONS.get(watermark_pos_name, "bottom-right"),
+                                    fontsize=int(watermark_fontsize_val), fontcolor=watermark_color_val,
+                                )
+                                yield log("✓ Đã thêm watermark bản quyền"), None, [], _BTN_RUNNING
+                            except Exception as e:
+                                yield log(f"⚠️ Thêm watermark thất bại: {e}"), None, [], _BTN_RUNNING
+
                         # thêm tệp nhật ký trong ngày vào danh sách đầu ra
                         import datetime
                         log_file = Path(ROOT_DIR) / "logs" / f"{datetime.datetime.now().strftime('%Y%m%d')}.log"
@@ -1766,7 +1795,8 @@ def build_ui():
                             voice_autorate, video_autorate, voice_rate, volume_rate, pitch_rate,
                             subtitle_type, remove_noise, fix_punc,
                             is_separate, embed_bgm, loop_bgm, backaudio_volume,
-                            remove_hardsub, cuda_accel],
+                            remove_hardsub, watermark_text, watermark_pos, watermark_fontsize,
+                            watermark_color, cuda_accel],
                     outputs=[log_output, video_preview, result_files, start_btn])
 
             # === Tab 2: Cài đặt kênh ===
