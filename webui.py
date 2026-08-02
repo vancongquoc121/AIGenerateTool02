@@ -75,9 +75,13 @@ def _load_settings() -> dict:
 
 
 def _save_settings(data: dict):
+    """Ghi đè cfg.json bằng cách gộp với nội dung hiện có, tránh mất các mục khác đã lưu."""
+    global _user_settings
+    merged = {**_load_settings(), **data}
     SETTINGS_JSON.parent.mkdir(parents=True, exist_ok=True)
-    SETTINGS_JSON.write_text(json.dumps(data, indent=4, ensure_ascii=False), encoding="utf-8")
-    settings.parse_init(data)
+    SETTINGS_JSON.write_text(json.dumps(merged, indent=4, ensure_ascii=False), encoding="utf-8")
+    settings.parse_init(merged)
+    _user_settings = merged
 
 
 # Tải cấu hình hiện tại
@@ -759,6 +763,57 @@ def _save_section(section_key, keys):
     save_btn.click(fn=_make_handler(keys), inputs=[_all_widgets[k] for k in keys], outputs=[status])
 
 
+def _grab_preview_frame(video_path):
+    """Trích 1 khung hình từ video để người dùng nhấp chọn vùng phụ đề."""
+    from PIL import Image
+    from videotrans.util.help_ffmpeg import runffmpeg
+    if not video_path:
+        return None, None, [], "⚠️ Hãy chọn video trước khi lấy khung hình xem trước"
+    frame_path = str(Path(TEMP_DIR) / f"vsr_area_preview_{int(time.time())}.jpg")
+    try:
+        runffmpeg(['-i', Path(video_path).absolute().as_posix(), '-ss', '00:00:01', '-vframes', '1', frame_path])
+        img = Image.open(frame_path)
+        img.load()
+        return img, img, [], f"📸 Đã lấy khung hình ({img.width}x{img.height}). Nhấp góc **trên-trái** rồi góc **dưới-phải** của vùng chứa phụ đề."
+    except Exception as e:
+        return None, None, [], f"⚠️ Không lấy được khung hình: {e}"
+
+
+def _reset_area_selection(base_img):
+    if base_img is None:
+        return None, [], "⚠️ Chưa có khung hình, hãy bấm lấy khung hình xem trước"
+    return base_img, [], "Đã đặt lại, nhấp góc **trên-trái** rồi góc **dưới-phải** của vùng chứa phụ đề."
+
+
+def _on_area_select(points, base_img, evt: "gr.SelectData"):
+    """Ghi lại 2 điểm nhấp trên ảnh xem trước, vẽ khung xanh để xem trước, đến điểm thứ 2 thì lưu bbox vào cfg.json."""
+    import gradio as gr
+    from PIL import ImageDraw
+    x, y = evt.index
+    points = list(points) if points else []
+    points.append((x, y))
+    _noop = gr.update()
+    if base_img is None:
+        return _noop, points, "⚠️ Chưa có khung hình, hãy bấm lấy khung hình xem trước", _noop, _noop, _noop, _noop
+
+    canvas = base_img.copy().convert("RGB")
+    draw = ImageDraw.Draw(canvas)
+    for (px, py) in points:
+        draw.ellipse([px - 6, py - 6, px + 6, py + 6], outline="lime", width=3)
+
+    if len(points) < 2:
+        return canvas, points, f"Đã chọn điểm 1: ({x}, {y}). Nhấp góc còn lại của vùng phụ đề.", _noop, _noop, _noop, _noop
+
+    (x1, y1), (x2, y2) = points[0], points[1]
+    xmin, xmax = sorted((x1, x2))
+    ymin, ymax = sorted((y1, y2))
+    draw.rectangle([xmin, ymin, xmax, ymax], outline="lime", width=4)
+    _save_settings({'vsr_area_ymin': str(ymin), 'vsr_area_ymax': str(ymax),
+                     'vsr_area_xmin': str(xmin), 'vsr_area_xmax': str(xmax)})
+    status = f"✅ Đã lưu vùng phụ đề: ymin={ymin}, ymax={ymax}, xmin={xmin}, xmax={xmax}"
+    return canvas, [], status, gr.update(value=str(ymin)), gr.update(value=str(ymax)), gr.update(value=str(xmin)), gr.update(value=str(xmax))
+
+
 # ---------------------------------------------------------------------------
 # Bảng tùy chọn nâng cao (bố cục lưới thu gọn)
 # ---------------------------------------------------------------------------
@@ -795,10 +850,16 @@ def build_advanced_settings():
             _w("vsr_dir", "Thư mục cài video-subtitle-remover", "Chứa backend/main.py, để trống để tắt xóa phụ đề cứng gốc")
             _w("vsr_python", "Python thực thi của VSR", "Để trống dùng python hiện tại")
             _w("vsr_inpaint_mode", "Thuật toán xóa phụ đề VSR", "sttn-auto/sttn-det/lama/propainter/opencv")
+        with gr.Row():
+            _w("vsr_area_ymin", "Vùng phụ đề - Y tối thiểu", "Tọa độ pixel, để trống 1 trong 4 ô = quét toàn khung hình")
+            _w("vsr_area_ymax", "Vùng phụ đề - Y tối đa", "")
+            _w("vsr_area_xmin", "Vùng phụ đề - X tối thiểu", "")
+            _w("vsr_area_xmax", "Vùng phụ đề - X tối đa", "")
         _save_section("common", ["lang", "countdown_sec", "retry_nums", "llm_chunk_size", "llm_ai_type",
                                   "batch_nums", "dont_notify", "show_more_settings", "homedir",
                                   "process_max", "process_max_gpu", "multi_gpus",
-                                  "vsr_dir", "vsr_python", "vsr_inpaint_mode"])
+                                  "vsr_dir", "vsr_python", "vsr_inpaint_mode",
+                                  "vsr_area_ymin", "vsr_area_ymax", "vsr_area_xmin", "vsr_area_xmax"])
 
     # ---- Điều khiển xuất video ----
     with gr.Accordion("📋 Điều khiển xuất video", open=False):
@@ -1502,6 +1563,15 @@ def build_ui():
                                 backaudio_volume = gr.Slider(minimum=0.0, maximum=2.0, value=float(_user_params.get("backaudio_volume", settings.get("backaudio_volume", 0.8))), step=0.1, label="Âm lượng nền")
                             with gr.Row():
                                 remove_hardsub = gr.Checkbox(label="Xóa phụ đề cứng gốc trước khi dịch (video-subtitle-remover)", value=False)
+                            with gr.Accordion("🎯 Xác định vùng phụ đề bằng cách nhấp chọn (tùy chọn)", open=False):
+                                gr.Markdown("Lấy 1 khung hình từ video, sau đó nhấp góc **trên-trái** rồi góc **dưới-phải** của vùng chứa phụ đề. Khung xanh sẽ hiển thị ngay trên ảnh, tọa độ tự động lưu vào Cài đặt nâng cao.")
+                                with gr.Row():
+                                    grab_frame_btn = gr.Button("📸 Lấy khung hình xem trước", size="sm")
+                                    reset_area_btn = gr.Button("🔄 Chọn lại", size="sm")
+                                area_preview_img = gr.Image(label="Nhấp 2 điểm: trên-trái rồi dưới-phải", interactive=False)
+                                area_base_image = gr.State(None)
+                                area_points_state = gr.State([])
+                                area_status = gr.Markdown("")
 
                         with gr.Accordion("🏷️ Watermark bản quyền", open=False):
                             watermark_text = gr.Textbox(label="Chữ watermark bản quyền", placeholder="Để trống để tắt, ví dụ: © 2026 Kênh của bạn")
@@ -1668,12 +1738,16 @@ def build_ui():
                                 _vsr_out_dir = Path(TEMP_DIR) / "vsr_cache"
                                 _vsr_out_dir.mkdir(parents=True, exist_ok=True)
                                 _vsr_output = str(_vsr_out_dir / f"nosub_{Path(file_path).stem}.mp4")
+                                _vsr_area_raw = [settings.get('vsr_area_ymin', ''), settings.get('vsr_area_ymax', ''),
+                                                 settings.get('vsr_area_xmin', ''), settings.get('vsr_area_xmax', '')]
+                                _vsr_sub_area = tuple(int(v) for v in _vsr_area_raw) if all(str(v).strip() for v in _vsr_area_raw) else None
                                 for _vsr_line in iter_remove_hard_subtitle(
                                     input_path=_effective_file_path,
                                     output_path=_vsr_output,
                                     vsr_dir=settings.get('vsr_dir', ''),
                                     vsr_python=settings.get('vsr_python', ''),
                                     inpaint_mode=settings.get('vsr_inpaint_mode', ''),
+                                    sub_area=_vsr_sub_area,
                                 ):
                                     yield log(f"[VSR] {_vsr_line}"), None, [], _BTN_RUNNING
                                 _effective_file_path = _vsr_output
@@ -1807,6 +1881,16 @@ def build_ui():
             # === Tab 3: Tùy chọn nâng cao ===
             with gr.Tab("🔧 Tùy chọn nâng cao", id="advanced"):
                 build_advanced_settings()
+
+            # Wire sau khi build_advanced_settings() tạo xong các ô vsr_area_* trong _all_widgets
+            grab_frame_btn.click(fn=_grab_preview_frame, inputs=[input_file],
+                                 outputs=[area_preview_img, area_base_image, area_points_state, area_status])
+            reset_area_btn.click(fn=_reset_area_selection, inputs=[area_base_image],
+                                 outputs=[area_preview_img, area_points_state, area_status])
+            area_preview_img.select(fn=_on_area_select, inputs=[area_points_state, area_base_image],
+                                    outputs=[area_preview_img, area_points_state, area_status,
+                                             _all_widgets['vsr_area_ymin'], _all_widgets['vsr_area_ymax'],
+                                             _all_widgets['vsr_area_xmin'], _all_widgets['vsr_area_xmax']])
 
     return app
 
