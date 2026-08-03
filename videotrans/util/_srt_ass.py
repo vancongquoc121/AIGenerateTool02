@@ -35,9 +35,17 @@ def set_ass_font(srtfile: str, video_width: int = 0, video_height: int = 0) -> s
     # pixel thật (vd tính năng chèn phụ đề vào đúng vùng) bị lệch hoặc bị đẩy
     # hẳn ra ngoài khung hình (không hiển thị). Đồng bộ lại PlayResX/PlayResY
     # theo đúng kích thước video để mọi giá trị margin/fontsize theo pixel đều đúng.
+    _font_scale = 1.0
     if video_width and video_height:
         try:
             _ass_content = Path(ass_file_path).read_text(encoding='utf-8-sig')
+            _orig_playresy_m = re.search(r'PlayResY:\s*(\d+)', _ass_content)
+            _orig_playresy = int(_orig_playresy_m.group(1)) if _orig_playresy_m else 288
+            # PlayResY càng lớn thì Fontsize/Outline/Shadow (tính theo pixel kịch bản)
+            # càng bị thu nhỏ tương đối, nên phóng theo đúng tỉ lệ để chữ giữ nguyên
+            # kích thước hiển thị như khi còn PlayResY mặc định (384x288).
+            if _orig_playresy > 0:
+                _font_scale = video_height / _orig_playresy
             _ass_content = re.sub(r'PlayResX:\s*\d+', f'PlayResX: {int(video_width)}', _ass_content)
             _ass_content = re.sub(r'PlayResY:\s*\d+', f'PlayResY: {int(video_height)}', _ass_content)
             Path(ass_file_path).write_text(_ass_content, encoding='utf-8')
@@ -59,7 +67,7 @@ def set_ass_font(srtfile: str, video_width: int = 0, video_height: int = 0) -> s
     default_style = (
         f"Style: {style.get('Name', 'Default')},"
         f"{style.get('Fontname', 'Noto Sans')},"
-        f"{style.get('Fontsize', 16)},"
+        f"{int(round(style.get('Fontsize', 16) * _font_scale))},"
         f"{style.get('PrimaryColour', '&H00FFFFFF&')},"
         f"{style.get('SecondaryColour', '&H00FFFFFF&')},"
         f"{style.get('OutlineColour', '&H00000000&')},"
@@ -73,8 +81,8 @@ def set_ass_font(srtfile: str, video_width: int = 0, video_height: int = 0) -> s
         f"{style.get('Spacing', 0)},"
         f"{style.get('Angle', 0)},"
         f"{style.get('BorderStyle', 1)},"
-        f"{style.get('Outline', 1)},"
-        f"{style.get('Shadow', 0)},"
+        f"{round(style.get('Outline', 1) * _font_scale, 2)},"
+        f"{round(style.get('Shadow', 0) * _font_scale, 2)},"
         f"{style.get('Alignment', 2)},"
         f"{style.get('MarginL', 10)},"
         f"{style.get('MarginR', 10)},"
@@ -93,7 +101,7 @@ def set_ass_font(srtfile: str, video_width: int = 0, video_height: int = 0) -> s
     bottom_style = (
         f"Style: Bottom,"
         f"{style.get('Fontname', 'Noto Sans')},"
-        f"{bottom_fontsize},"
+        f"{int(round(bottom_fontsize * _font_scale))},"
         f"{bottom_color},"
         f"{bottom_secondarycolour},"
         f"{bottom_outlinecolour},"
@@ -107,8 +115,8 @@ def set_ass_font(srtfile: str, video_width: int = 0, video_height: int = 0) -> s
         f"{style.get('Spacing', 0)},"
         f"{style.get('Angle', 0)},"
         f"{style.get('BorderStyle', 1)},"
-        f"{style.get('Outline', 1)},"
-        f"{style.get('Shadow', 0)},"
+        f"{round(style.get('Outline', 1) * _font_scale, 2)},"
+        f"{round(style.get('Shadow', 0) * _font_scale, 2)},"
         f"{style.get('Alignment', 2)},"
         f"{style.get('MarginL', 10)},"
         f"{style.get('MarginR', 10)},"
