@@ -6,7 +6,7 @@ from videotrans.configure.config import ROOT_DIR, logger
 from videotrans.util._srt_parse import get_subtitle_from_srt
 
 
-def set_ass_font(srtfile: str) -> str:
+def set_ass_font(srtfile: str, video_width: int = 0, video_height: int = 0) -> str:
     from . import help_ffmpeg
     """
     Convert SRT to ASS with custom styles:
@@ -29,6 +29,20 @@ def set_ass_font(srtfile: str) -> str:
         f.write(srt_str.strip())
     ass_file_path = f'{srtfile[:-3]}ass'
     help_ffmpeg.runffmpeg(['-y', '-i', edit_srt, ass_file_path])
+
+    # ffmpeg tạo ASS với độ phân giải kịch bản mặc định 384x288, không khớp
+    # kích thước thật của video khiến các giá trị Margin/Fontsize tính theo
+    # pixel thật (vd tính năng chèn phụ đề vào đúng vùng) bị lệch hoặc bị đẩy
+    # hẳn ra ngoài khung hình (không hiển thị). Đồng bộ lại PlayResX/PlayResY
+    # theo đúng kích thước video để mọi giá trị margin/fontsize theo pixel đều đúng.
+    if video_width and video_height:
+        try:
+            _ass_content = Path(ass_file_path).read_text(encoding='utf-8-sig')
+            _ass_content = re.sub(r'PlayResX:\s*\d+', f'PlayResX: {int(video_width)}', _ass_content)
+            _ass_content = re.sub(r'PlayResY:\s*\d+', f'PlayResY: {int(video_height)}', _ass_content)
+            Path(ass_file_path).write_text(_ass_content, encoding='utf-8')
+        except Exception as e:
+            logger.exception(f"[set_ass_font] 错误：无法同步 PlayRes 到视频真实分辨率: {e}", exc_info=True)
 
     JSON_FILE = f'{ROOT_DIR}/videotrans/ass.json'
     if not os.path.exists(JSON_FILE):

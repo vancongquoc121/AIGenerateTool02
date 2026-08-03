@@ -67,7 +67,11 @@ class SubtitleMixin:
         if self.cfg.subtitle_type in [2, 4]:
             return os.path.basename(process_end_subtitle), subtitle_langcode
 
-        process_end_subtitle_ass = set_ass_font(process_end_subtitle)
+        process_end_subtitle_ass = set_ass_font(
+            process_end_subtitle,
+            video_width=self.video_info.get('width', 0) if hasattr(self, 'video_info') else 0,
+            video_height=self.video_info.get('height', 0) if hasattr(self, 'video_info') else 0,
+        )
         basename = os.path.basename(process_end_subtitle_ass)
         return basename, subtitle_langcode
 
