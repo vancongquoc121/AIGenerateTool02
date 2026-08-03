@@ -1563,6 +1563,8 @@ def build_ui():
                                 backaudio_volume = gr.Slider(minimum=0.0, maximum=2.0, value=float(_user_params.get("backaudio_volume", settings.get("backaudio_volume", 0.8))), step=0.1, label="Âm lượng nền")
                             with gr.Row():
                                 remove_hardsub = gr.Checkbox(label="Xóa phụ đề cứng gốc trước khi dịch (video-subtitle-remover)", value=False)
+                                burn_sub_in_area = gr.Checkbox(label="Chèn phụ đề mới vào đúng vùng đã xác định", value=False,
+                                    info="Độc lập với xóa phụ đề cứng. Cần xác định vùng phụ đề bên dưới + kiểu nhúng là phụ đề cứng")
                             with gr.Accordion("🎯 Xác định vùng phụ đề bằng cách nhấp chọn (tùy chọn)", open=False):
                                 gr.Markdown("Lấy 1 khung hình từ video, sau đó nhấp góc **trên-trái** rồi góc **dưới-phải** của vùng chứa phụ đề. Khung xanh sẽ hiển thị ngay trên ảnh, tọa độ tự động lưu vào Cài đặt nâng cao.")
                                 with gr.Row():
@@ -1685,7 +1687,7 @@ def build_ui():
                                     voice_rate_val, volume_rate_val, pitch_rate_val,
                                     subtitle_type_name, remove_noise_val, fix_punc_name,
                                     is_separate_val, embed_bgm_val, loop_bgm_name, backaudio_volume_val,
-                                    remove_hardsub_val, watermark_text_val, watermark_pos_name,
+                                    remove_hardsub_val, burn_sub_in_area_val, watermark_text_val, watermark_pos_name,
                                     watermark_fontsize_val, watermark_color_val, cuda_val):
                     print(f'{file_path=}')
                     if not file_path:
@@ -1731,6 +1733,9 @@ def build_ui():
                         yield log(_gpu_status_msg), None, [], _BTN_RUNNING
 
                         _effective_file_path = Path(file_path).absolute().as_posix()
+                        _vsr_area_raw = [settings.get('vsr_area_ymin', ''), settings.get('vsr_area_ymax', ''),
+                                         settings.get('vsr_area_xmin', ''), settings.get('vsr_area_xmax', '')]
+                        _vsr_sub_area = tuple(int(v) for v in _vsr_area_raw) if all(str(v).strip() for v in _vsr_area_raw) else None
                         if remove_hardsub_val:
                             yield log("🧹 Đang xóa phụ đề cứng gốc bằng video-subtitle-remover (VSR)..."), None, [], _BTN_RUNNING
                             try:
@@ -1738,9 +1743,6 @@ def build_ui():
                                 _vsr_out_dir = Path(TEMP_DIR) / "vsr_cache"
                                 _vsr_out_dir.mkdir(parents=True, exist_ok=True)
                                 _vsr_output = str(_vsr_out_dir / f"nosub_{Path(file_path).stem}.mp4")
-                                _vsr_area_raw = [settings.get('vsr_area_ymin', ''), settings.get('vsr_area_ymax', ''),
-                                                 settings.get('vsr_area_xmin', ''), settings.get('vsr_area_xmax', '')]
-                                _vsr_sub_area = tuple(int(v) for v in _vsr_area_raw) if all(str(v).strip() for v in _vsr_area_raw) else None
                                 for _vsr_line in iter_remove_hard_subtitle(
                                     input_path=_effective_file_path,
                                     output_path=_vsr_output,
@@ -1754,6 +1756,28 @@ def build_ui():
                                 yield log("✓ Đã xóa phụ đề cứng gốc xong"), None, [], _BTN_RUNNING
                             except SubtitleRemoverError as e:
                                 yield log(f"⚠️ Xóa phụ đề cứng gốc thất bại, dùng video gốc: {e}"), None, [], _BTN_RUNNING
+
+                        _ass_overridden = False
+                        _ass_backup_content = None
+                        if burn_sub_in_area_val and _vsr_sub_area and subtitle_val not in (1, 3):
+                            yield log("⚠️ Chèn phụ đề vào vùng đã chọn chỉ áp dụng cho kiểu nhúng phụ đề cứng, bỏ qua vì kiểu nhúng hiện tại là phụ đề mềm/không nhúng"), None, [], _BTN_RUNNING
+                        if burn_sub_in_area_val and _vsr_sub_area and subtitle_val in (1, 3):
+                            try:
+                                from videotrans.util import help_ffmpeg
+                                _v_w, _v_h = help_ffmpeg.get_video_info(_effective_file_path, video_scale=True)
+                                _ymin, _ymax, _xmin, _xmax = _vsr_sub_area
+                                _new_margin_v = max(0, int(_v_h) - _ymax)
+                                _ass_json_path = Path(f'{ROOT_DIR}/videotrans/ass.json')
+                                _ass_backup_content = _ass_json_path.read_text(encoding='utf-8') if _ass_json_path.exists() else None
+                                _new_style = _load_ass_style()
+                                _new_style['Alignment'] = 2
+                                _new_style['MarginV'] = _new_margin_v
+                                _ass_json_path.parent.mkdir(parents=True, exist_ok=True)
+                                _ass_json_path.write_text(json.dumps(_new_style, ensure_ascii=False, indent=4), encoding='utf-8')
+                                _ass_overridden = True
+                                yield log(f"📍 Đã đặt vị trí phụ đề mới trùng vùng vừa xóa (MarginV={_new_margin_v})"), None, [], _BTN_RUNNING
+                            except Exception as e:
+                                yield log(f"⚠️ Không thể đặt vị trí phụ đề theo vùng đã xóa: {e}"), None, [], _BTN_RUNNING
 
                         _file_obj = tools.format_video(_effective_file_path)
                         _nospacebasename = _file_obj["basename"].replace(" ", "-").replace(".", "-")
@@ -1813,13 +1837,22 @@ def build_ui():
                             ("Giai đoạn 7/8: Nhận dạng lần 2...", "recogn2pass", "Đã nhận dạng lần 2 xong"),
                             ("Giai đoạn 8/8: Tổng hợp cuối cùng...", "assembling", "Đã tổng hợp xong"),
                         ]
-                        for stage_name, method, done_msg in stages:
-                            yield log(stage_name), None, [], _BTN_RUNNING
-                            getattr(trk, method)()
-                            if method != "assembling":
-                                yield log(f"✓ {done_msg}"), None, [], _BTN_RUNNING
+                        try:
+                            for stage_name, method, done_msg in stages:
+                                yield log(stage_name), None, [], _BTN_RUNNING
+                                getattr(trk, method)()
+                                if method != "assembling":
+                                    yield log(f"✓ {done_msg}"), None, [], _BTN_RUNNING
 
-                        trk.task_done()
+                            trk.task_done()
+                        finally:
+                            # Khôi phục kiểu ASS toàn cục, tránh ảnh hưởng các lần chạy khác/bản desktop
+                            if _ass_overridden:
+                                _ass_json_path = Path(f'{ROOT_DIR}/videotrans/ass.json')
+                                if _ass_backup_content is not None:
+                                    _ass_json_path.write_text(_ass_backup_content, encoding='utf-8')
+                                else:
+                                    _ass_json_path.unlink(missing_ok=True)
                         yield log("✓ Đã ghép video xong"), None, [], _BTN_RUNNING
                         yield log("✅ Toàn bộ tác vụ đã hoàn thành!"), None, [], _BTN_RUNNING
 
@@ -1870,7 +1903,7 @@ def build_ui():
                             voice_autorate, video_autorate, voice_rate, volume_rate, pitch_rate,
                             subtitle_type, remove_noise, fix_punc,
                             is_separate, embed_bgm, loop_bgm, backaudio_volume,
-                            remove_hardsub, watermark_text, watermark_pos, watermark_fontsize,
+                            remove_hardsub, burn_sub_in_area, watermark_text, watermark_pos, watermark_fontsize,
                             watermark_color, cuda_accel],
                     outputs=[log_output, video_preview, result_files, start_btn])
 
