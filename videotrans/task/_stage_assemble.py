@@ -385,7 +385,10 @@ class AssembleMixin:
 
         if hw_type in ['nvenc']:
             vcodec = "h264_nvenc" if codec == '264' else "hevc_nvenc"
-            enc_args = ['-cq', _crf, '-preset', PRESET_MAP.get('nvenc').get(_preset, 'p4')]
+            # ép về yuv420p 8-bit chuẩn, tránh NVENC giữ nguyên định dạng màu
+            # 10-bit/4:2:2 của nguồn khiến trình duyệt/HTML5 video không giải
+            # mã được video (chỉ nghe thấy tiếng, hình đen)
+            enc_args = ['-cq', _crf, '-preset', PRESET_MAP.get('nvenc').get(_preset, 'p4'), '-pix_fmt', 'yuv420p']
             if settings.get('hw_decode'):
                 global_args = ['-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda']
                 vf_string = f"[0:v]hwdownload,format=nv12,subtitles=filename='{subtitles_file}',hwupload_cuda[v_out]"
