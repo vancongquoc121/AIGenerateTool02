@@ -238,7 +238,14 @@ class AppSettings:
             "multi_gpus": False,
             "retry_nums": 1,
             "chattts_voice": ChatTTS_VOICE,
-            "proxy": ""
+            "proxy": "",
+            "vsr_dir": "",
+            "vsr_python": "",
+            "vsr_inpaint_mode": "",
+            "vsr_area_ymin": "",
+            "vsr_area_ymax": "",
+            "vsr_area_xmin": "",
+            "vsr_area_xmax": "",
         }
 
     def _apply_dict(self, data: Dict):
