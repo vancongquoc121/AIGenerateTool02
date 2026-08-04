@@ -1582,6 +1582,11 @@ def build_ui():
                                 watermark_fontsize = gr.Slider(minimum=10, maximum=72, value=24, step=1, label="Cỡ chữ")
                                 watermark_color = gr.Textbox(value="white", label="Màu chữ (tên hoặc mã hex, vd white/yellow/#FFCC00)")
 
+                        with gr.Accordion("🎬 Ghép Intro / Outro", open=False):
+                            gr.Markdown("Chèn video giới thiệu vào đầu và/hoặc video kết thúc vào cuối video kết quả. Để trống nếu không cần.")
+                            intro_video = gr.File(label="Video intro (đầu video)", file_types=["video"])
+                            outro_video = gr.File(label="Video outro (cuối video)", file_types=["video"])
+
                         cuda_accel = gr.Checkbox(label="Bật tăng tốc CUDA", value=False)
                         channel_warning = gr.Markdown("", visible=False)
                         
@@ -1688,7 +1693,7 @@ def build_ui():
                                     subtitle_type_name, remove_noise_val, fix_punc_name,
                                     is_separate_val, embed_bgm_val, loop_bgm_name, backaudio_volume_val,
                                     remove_hardsub_val, burn_sub_in_area_val, watermark_text_val, watermark_pos_name,
-                                    watermark_fontsize_val, watermark_color_val, cuda_val):
+                                    watermark_fontsize_val, watermark_color_val, intro_video_val, outro_video_val, cuda_val):
                     print(f'{file_path=}')
                     if not file_path:
                         yield "❌ Vui lòng chọn một tệp video hoặc âm thanh trước", None, [], _BTN_IDLE
@@ -1873,6 +1878,19 @@ def build_ui():
                                     elif f.suffix.lower() in ('.mkv', '.wav', '.srt', '.txt', '.mp3'):
                                         output_files.append(str(f))
 
+                        if (intro_video_val or outro_video_val) and video_preview_path:
+                            yield log("🎬 Đang ghép intro/outro vào video..."), None, [], _BTN_RUNNING
+                            try:
+                                from videotrans.util.concat_intro_outro import add_intro_outro
+                                add_intro_outro(
+                                    video_preview_path,
+                                    intro_path=intro_video_val or "",
+                                    outro_path=outro_video_val or "",
+                                )
+                                yield log("✓ Đã ghép intro/outro"), None, [], _BTN_RUNNING
+                            except Exception as e:
+                                yield log(f"⚠️ Ghép intro/outro thất bại: {e}"), None, [], _BTN_RUNNING
+
                         if watermark_text_val and watermark_text_val.strip() and video_preview_path:
                             yield log("🏷️ Đang thêm watermark bản quyền vào video..."), None, [], _BTN_RUNNING
                             try:
@@ -1904,7 +1922,7 @@ def build_ui():
                             subtitle_type, remove_noise, fix_punc,
                             is_separate, embed_bgm, loop_bgm, backaudio_volume,
                             remove_hardsub, burn_sub_in_area, watermark_text, watermark_pos, watermark_fontsize,
-                            watermark_color, cuda_accel],
+                            watermark_color, intro_video, outro_video, cuda_accel],
                     outputs=[log_output, video_preview, result_files, start_btn])
 
             # === Tab 2: Cài đặt kênh ===
