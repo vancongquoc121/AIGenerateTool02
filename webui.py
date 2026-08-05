@@ -763,20 +763,36 @@ def _save_section(section_key, keys):
     save_btn.click(fn=_make_handler(keys), inputs=[_all_widgets[k] for k in keys], outputs=[status])
 
 
-def _grab_preview_frame(video_path):
-    """Trích 1 khung hình từ video để người dùng nhấp chọn vùng phụ đề."""
+def _grab_preview_frame(video_path, frame_time=1.0):
+    """Trích 1 khung hình từ video ở thời điểm tùy chọn để người dùng nhấp chọn vùng phụ đề."""
     from PIL import Image
     from videotrans.util.help_ffmpeg import runffmpeg
     if not video_path:
         return None, None, [], "⚠️ Hãy chọn video trước khi lấy khung hình xem trước"
+    frame_time = max(0.0, float(frame_time or 0))
     frame_path = str(Path(TEMP_DIR) / f"vsr_area_preview_{int(time.time())}.jpg")
     try:
-        runffmpeg(['-i', Path(video_path).absolute().as_posix(), '-ss', '00:00:01', '-vframes', '1', frame_path])
+        runffmpeg(['-ss', str(frame_time), '-i', Path(video_path).absolute().as_posix(), '-vframes', '1', frame_path])
         img = Image.open(frame_path)
         img.load()
-        return img, img, [], f"📸 Đã lấy khung hình ({img.width}x{img.height}). Nhấp góc **trên-trái** rồi góc **dưới-phải** của vùng chứa phụ đề."
+        return img, img, [], f"📸 Đã lấy khung hình tại {frame_time:.1f}s ({img.width}x{img.height}). Nhấp góc **trên-trái** rồi góc **dưới-phải** của vùng chứa phụ đề."
     except Exception as e:
         return None, None, [], f"⚠️ Không lấy được khung hình: {e}"
+
+
+def _update_frame_time_max(video_path):
+    """Cập nhật giá trị lớn nhất của thanh trượt thời điểm theo thời lượng video vừa chọn."""
+    import gradio as gr
+    if not video_path:
+        return gr.update()
+    try:
+        from videotrans.util._ffprobe import get_video_duration
+        duration_sec = get_video_duration(video_path) / 1000
+        if duration_sec <= 0:
+            return gr.update()
+        return gr.update(maximum=duration_sec, value=min(1.0, duration_sec))
+    except Exception:
+        return gr.update()
 
 
 def _reset_area_selection(base_img):
@@ -1567,6 +1583,7 @@ def build_ui():
                                     info="Độc lập với xóa phụ đề cứng. Cần xác định vùng phụ đề bên dưới + kiểu nhúng là phụ đề cứng")
                             with gr.Accordion("🎯 Xác định vùng phụ đề bằng cách nhấp chọn (tùy chọn)", open=False):
                                 gr.Markdown("Lấy 1 khung hình từ video, sau đó nhấp góc **trên-trái** rồi góc **dưới-phải** của vùng chứa phụ đề. Khung xanh sẽ hiển thị ngay trên ảnh, tọa độ tự động lưu vào Cài đặt nâng cao.")
+                                frame_time_slider = gr.Slider(minimum=0, maximum=60, value=1, step=0.5, label="Thời điểm lấy khung hình (giây)", info="Kéo để chọn thời điểm bất kỳ trên video thay vì luôn lấy hình đầu tiên")
                                 with gr.Row():
                                     grab_frame_btn = gr.Button("📸 Lấy khung hình xem trước", size="sm")
                                     reset_area_btn = gr.Button("🔄 Chọn lại", size="sm")
@@ -1934,7 +1951,8 @@ def build_ui():
                 build_advanced_settings()
 
             # Wire sau khi build_advanced_settings() tạo xong các ô vsr_area_* trong _all_widgets
-            grab_frame_btn.click(fn=_grab_preview_frame, inputs=[input_file],
+            input_file.change(fn=_update_frame_time_max, inputs=[input_file], outputs=[frame_time_slider])
+            grab_frame_btn.click(fn=_grab_preview_frame, inputs=[input_file, frame_time_slider],
                                  outputs=[area_preview_img, area_base_image, area_points_state, area_status])
             reset_area_btn.click(fn=_reset_area_selection, inputs=[area_base_image],
                                  outputs=[area_preview_img, area_points_state, area_status])
